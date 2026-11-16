@@ -66,6 +66,11 @@ PERIOD_DOWNLOAD: Final[tuple[str, str]] = ("1993-01-01", "2026-08-01")
 #: Cubo crudo descargado por ``scripts/01_descargar_datos.py``.
 CUBE_RAW: Final[Path] = DATA_RAW / "glorys12_thetao_norte_grande_1993-01_2026-08.nc"
 
+#: Solo para el mapa de la zona de estudio (fig01): temperatura a 0.5 m en un
+#: dominio mas amplio (18-33.5 S, 78-69 W) sobre ``PERIOD_FULL``.
+BOX_MAP: Final[dict[str, tuple[float, float]]] = {"lat": (-33.5, -18.0), "lon": (-78.0, -69.0)}
+CUBE_MAP: Final[Path] = DATA_RAW / "glorys12_thetao_0.5m_mapa_1993-01_2026-03.nc"
+
 #: Indices de TSM Nino 1+2, 3, 3.4 y 4 (CPC/NOAA), en cache local.
 INDICES_CACHE: Final[Path] = DATA_RAW / "indices"
 
