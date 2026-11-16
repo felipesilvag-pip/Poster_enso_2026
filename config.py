@@ -71,6 +71,13 @@ CUBE_RAW: Final[Path] = DATA_RAW / "glorys12_thetao_norte_grande_1993-01_2026-08
 BOX_MAP: Final[dict[str, tuple[float, float]]] = {"lat": (-33.5, -18.0), "lon": (-78.0, -69.0)}
 CUBE_MAP: Final[Path] = DATA_RAW / "glorys12_thetao_0.5m_mapa_1993-01_2026-03.nc"
 
+#: Exploratorio: producto analisis-pronostico de Copernicus ("anfc"), para los meses
+#: posteriores al ultimo de GLORYS12. Se reajusta por su sesgo medio por pixel y capa
+#: frente a GLORYS12 en el solape (2026-01..08) antes de proyectarlo.
+DATASET_ANFC: Final[str] = "cmems_mod_glo_phy-thetao_anfc_0.083deg_P1M-m"
+PERIOD_ANFC: Final[tuple[str, str]] = ("2026-01-01", "2026-10-01")
+CUBE_ANFC: Final[Path] = DATA_RAW / "anfc_thetao_norte_grande_2026-01_2026-10.nc"
+
 #: Indices de TSM Nino 1+2, 3, 3.4 y 4 (CPC/NOAA), en cache local.
 INDICES_CACHE: Final[Path] = DATA_RAW / "indices"
 

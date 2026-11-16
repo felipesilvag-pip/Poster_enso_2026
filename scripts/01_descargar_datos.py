@@ -5,6 +5,8 @@
   y haber ejecutado antes, una sola vez, ``copernicusmarine login``.
 - GLORYS12 a 0.5 m en un dominio mas amplio (18-33.5 S, 78-69 W), solo para el
   mapa de la zona de estudio.
+- Exploratorio: producto analisis-pronostico de Copernicus (anfc), 2026-01 a
+  2026-10, para extender El Nino 2026 despues del ultimo mes de GLORYS12.
 - Indices de TSM Nino 1+2, 3, 3.4 y 4 del CPC/NOAA (sin cuenta).
 
 Si un archivo ya existe no se vuelve a descargar (usar ``--refrescar`` para los
@@ -59,6 +61,16 @@ def main() -> None:
             depth=(0.0, 1.0),
         )
         print(f"  {config.CUBE_MAP.stat().st_size / 2**20:.0f} MB")
+        print(f"anfc (exploratorio) -> {config.CUBE_ANFC}")
+        download_glorys_box(
+            output_path=config.CUBE_ANFC,
+            box=config.BOXES[config.BOX],
+            dataset_id=config.DATASET_ANFC,
+            variables=config.VARIABLES,
+            period=config.PERIOD_ANFC,
+            depth=config.DEPTH_RANGE,
+        )
+        print(f"  {config.CUBE_ANFC.stat().st_size / 2**20:.0f} MB")
 
     config.INDICES_CACHE.mkdir(parents=True, exist_ok=True)
     nino = load_nino_regions(cache_dir=config.INDICES_CACHE, refresh=args.refrescar)

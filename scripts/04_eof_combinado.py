@@ -4,8 +4,9 @@
    normalizada a varianza 1, concatenacion y SVD: el EOF combinado.
 2. Rotacion de sus ``config.K_ROTATED`` primeros modos con pixeles como filas:
    varimax (Kaiser) y bifactor bi-quartimin ortogonal (Jennrich & Bentler 2011).
-3. Proyeccion de los meses posteriores a ``config.PERIOD_FULL`` (2026-04..08)
-   sobre los ejes congelados: misma anomalia, mismas EOF, mismas escalas.
+3. Proyeccion de los meses posteriores a ``config.PERIOD_FULL`` sobre los ejes
+   congelados (misma anomalia, mismas EOF, mismas escalas): GLORYS12 hasta su
+   ultimo mes y, como extension exploratoria, el producto anfc reajustado.
 
 Guarda ``data/processed/componentes.nc`` (series, R2 por capa, % del total y
 mapas de carga de los 12 componentes) e imprime la tabla del poster. Uso::
@@ -36,14 +37,38 @@ from enso_chile.rotations import bifactor, varimax  # noqa: E402
 COMPONENTES_NC = config.DATA_PROCESSED / "componentes.nc"
 
 
-def meses_nuevos(t_fin: pd.Timestamp) -> xr.DataArray:
-    """Anomalias congeladas de los meses descargados despues del periodo de ajuste."""
-    crudo = open_cube(config.CUBE_RAW)["thetao"]
-    capas = select_depths(select_box(crudo, config.BOXES[config.BOX]), config.DEPTHS_WORK)
-    hist = capas.sel(time=slice(*config.PERIOD_FULL)).load()
-    nuevo = capas.sel(time=capas.time > np.datetime64(t_fin)).load()
-    return xr.concat([frozen_anomalies(hist.sel(depth=z), nuevo.sel(depth=z), config.ANOMALY_DETREND)
+def _congeladas(hist: xr.DataArray, campo: xr.DataArray) -> xr.DataArray:
+    return xr.concat([frozen_anomalies(hist.sel(depth=z), campo.sel(depth=z), config.ANOMALY_DETREND)
                       for z in config.DEPTHS_WORK], dim="depth").transpose("time", "depth", ...)
+
+
+def meses_nuevos(t_fin: pd.Timestamp) -> tuple[xr.DataArray, list[str]]:
+    """Anomalias congeladas de los meses posteriores al periodo de ajuste, y su fuente.
+
+    Primero los meses de GLORYS12; despues, si se descargo, el producto anfc
+    (exploratorio) en los meses que GLORYS12 aun no publica, reajustado por su sesgo
+    medio por pixel y capa frente a GLORYS12 en los meses en que ambos coinciden.
+    """
+    crudo = open_cube(config.CUBE_RAW)["thetao"]
+    capas = select_depths(select_box(crudo, config.BOXES[config.BOX]), config.DEPTHS_WORK).load()
+    hist = capas.sel(time=slice(*config.PERIOD_FULL))
+    anom = _congeladas(hist, capas.sel(time=capas.time > np.datetime64(t_fin)))
+    fuente = ["GLORYS12"] * anom.sizes["time"]
+    if config.CUBE_ANFC.exists():
+        af = open_cube(config.CUBE_ANFC)["thetao"]
+        af = af.sel(depth=list(config.DEPTHS_WORK), method="nearest").assign_coords(depth=capas.depth.values)
+        af = af.sel(latitude=capas.latitude.values, longitude=capas.longitude.values, method="nearest",
+                    tolerance=1e-3).assign_coords(latitude=capas.latitude, longitude=capas.longitude).load()
+        comunes = np.intersect1d(af.time.values, capas.time.values)
+        sesgo = (af.sel(time=comunes) - capas.sel(time=comunes)).mean("time")
+        af = (af - sesgo).sel(time=af.time > capas.time[-1])
+        if af.sizes["time"]:
+            # 1-5 pixeles por capa sin dato en anfc: anomalia 0
+            anom = xr.concat([anom, _congeladas(hist, af).fillna(0.0)], dim="time")
+            fuente += ["anfc"] * af.sizes["time"]
+            print(f"anfc (exploratorio): {pd.Timestamp(af.time.values[0]):%Y-%m} a "
+                  f"{pd.Timestamp(af.time.values[-1]):%Y-%m}, sesgo estimado en {len(comunes)} meses")
+    return anom, fuente
 
 
 def indices(t: pd.DatetimeIndex) -> dict[str, np.ndarray]:
@@ -72,7 +97,8 @@ def main() -> None:
     metodos = {"EOF": np.eye(k), "Varimax": varimax(Lp, normalize=True)[1],
                "Bifactor": bifactor(Lp, n_starts=20, random_state=0)[1]}
 
-    nuevos = meses_nuevos(t_h[-1])
+    nuevos, fuente = meses_nuevos(t_h[-1])
+    fuente = ["ajuste"] * len(t_h) + fuente
     t_all = t_h.append(pd.DatetimeIndex(nuevos.time.values))
     Z = np.vstack([prefilter_blocks(c, config.DEPTHS_WORK, res, cmb.block_scales, K) for c in (cubo, nuevos)])
     P0 = project_scores(Z, A)
@@ -110,13 +136,15 @@ def main() -> None:
          "rC": ("comp", [f["rC"] for f in filas]),
          "mapa": (("comp", "depth", "latitude", "longitude"), np.stack([f["mapa"] for f in filas]))},
         coords={"comp": np.arange(len(filas)), "metodo": ("comp", [f["metodo"] for f in filas]),
-                "nombre": ("comp", [f["nombre"] for f in filas]), "time": t_all,
+                "nombre": ("comp", [f["nombre"] for f in filas]), "time": t_all, "fuente": ("time", fuente),
                 "depth": list(config.DEPTHS_WORK), "latitude": m0.latitude.values,
                 "longitude": m0.longitude.values},
         attrs={"periodo_ajuste": f"{t_h[0]:%Y-%m}/{t_h[-1]:%Y-%m}",
                "serie": "puntaje estandarizado con la media y sd del periodo de ajuste; meses "
                         "posteriores proyectados sobre los ejes congelados",
                "mapa": "carga en grados C por sd de la serie",
+               "fuente": "ajuste: periodo de ajuste; GLORYS12: meses nuevos de GLORYS12; anfc: producto "
+                         "analisis-pronostico reajustado por sesgo (exploratorio)",
                "r2": "% de la varianza de cada capa", "tot": "% de la varianza combinada"})
     save_cube(ds, COMPONENTES_NC, overwrite=True)
 
@@ -126,6 +154,10 @@ def main() -> None:
                          index=[f"{m} {n}" for m, n in zip(ds.metodo.values, ds.nombre.values)])
     print(tabla.round(2).to_string())
     print(f"Guardado: {COMPONENTES_NC} ({t_all[0]:%Y-%m} a {t_all[-1]:%Y-%m})")
+    s = ds.serie.sel(comp=int(np.flatnonzero((ds.metodo.values == "Bifactor") & (ds.nombre.values == "General"))[0]))
+    print("Bifactor general, meses proyectados:",
+          ", ".join(f"{pd.Timestamp(t):%Y-%m} {v:+.2f} ({f})" for t, v, f in
+                    zip(s.time.values[len(t_h):], s.values[len(t_h):], fuente[len(t_h):])))
 
 
 if __name__ == "__main__":
