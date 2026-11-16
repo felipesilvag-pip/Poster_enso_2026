@@ -38,9 +38,12 @@ VARIABLES: Final[tuple[str, ...]] = ("thetao",)
 # Caja de estudio y profundidades
 # --------------------------------------------------------------------------- #
 
-#: Norte Grande de Chile: 18-27 S, desde la costa hasta 74 W (~200 km).
+#: Norte Grande de Chile: 18-27 S, desde la costa hasta 74 W (~200 km). Es la caja
+#: del poster. Norte Chico (27-32.5 S) queda declarada para la extension futura y
+#: para los tests del limite entre cajas; nunca se descomponen juntas.
 BOXES: Final[dict[str, dict[str, tuple[float, float]]]] = {
     "norte_grande": {"lat": (-27.0, -18.0), "lon": (-74.0, -69.0)},
+    "norte_chico": {"lat": (-32.5, -27.0), "lon": (-74.0, -69.0)},
 }
 BOX: Final[str] = "norte_grande"
 
@@ -63,8 +66,26 @@ PERIOD_DOWNLOAD: Final[tuple[str, str]] = ("1993-01-01", "2026-08-01")
 #: Cubo crudo descargado por ``scripts/01_descargar_datos.py``.
 CUBE_RAW: Final[Path] = DATA_RAW / "glorys12_thetao_norte_grande_1993-01_2026-08.nc"
 
+#: Solo para el mapa de la zona de estudio (fig01): temperatura a 0.5 m en un
+#: dominio mas amplio (18-33.5 S, 78-69 W) sobre ``PERIOD_FULL``.
+BOX_MAP: Final[dict[str, tuple[float, float]]] = {"lat": (-33.5, -18.0), "lon": (-78.0, -69.0)}
+CUBE_MAP: Final[Path] = DATA_RAW / "glorys12_thetao_0.5m_mapa_1993-01_2026-03.nc"
+
+#: Exploratorio: producto analisis-pronostico de Copernicus ("anfc"), para los meses
+#: posteriores al ultimo de GLORYS12. Se reajusta por su sesgo medio por pixel y capa
+#: frente a GLORYS12 en el solape (2026-01..08) antes de proyectarlo.
+DATASET_ANFC: Final[str] = "cmems_mod_glo_phy-thetao_anfc_0.083deg_P1M-m"
+PERIOD_ANFC: Final[tuple[str, str]] = ("2026-01-01", "2026-10-01")
+CUBE_ANFC: Final[Path] = DATA_RAW / "anfc_thetao_norte_grande_2026-01_2026-10.nc"
+
 #: Indices de TSM Nino 1+2, 3, 3.4 y 4 (CPC/NOAA), en cache local.
 INDICES_CACHE: Final[Path] = DATA_RAW / "indices"
+
+#: Cubo de anomalias de las cuatro capas sobre ``PERIOD_FULL`` (script 02).
+CUBE_ANOM: Final[Path] = DATA_PROCESSED / "anom_thetao_norte_grande.nc"
+
+#: Tabla de eventos ICEN (script 03).
+EVENTS_CSV: Final[Path] = DATA_PROCESSED / "eventos_icen.csv"
 
 # --------------------------------------------------------------------------- #
 # Anomalias y ponderacion
