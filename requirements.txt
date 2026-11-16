@@ -1,0 +1,22 @@
+# Entorno de referencia: Python 3.10, versiones verificadas con conda (conda-forge).
+# Crear con:  conda create -n poster_enso python=3.10  &&  pip install -r requirements.txt
+# (cartopy se instala mas facil con conda: conda install -c conda-forge cartopy)
+
+# --- nucleo cientifico ---
+numpy==2.2.6
+pandas==2.3.3
+scipy==1.15.2
+
+# --- NetCDF y descarga de GLORYS12 ---
+xarray==2025.6.1
+netCDF4==1.7.4
+dask==2026.3.0
+copernicusmarine==2.4.1
+certifi
+
+# --- figuras ---
+matplotlib==3.10.9
+cartopy==0.25.0
+
+# --- tests ---
+pytest==9.1.1

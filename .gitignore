@@ -1,0 +1,35 @@
+# --- datos (los descarga cada usuario; GLORYS12 pesa cientos de MB) ---
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+*.nc
+*.nc4
+*.zarr/
+
+# --- figuras (se regeneran con scripts/06_figuras_poster.py) ---
+figures/*
+!figures/.gitkeep
+
+# --- credenciales (Copernicus Marine usa su propio archivo: copernicusmarine login) ---
+.env
+.env.*
+*.netrc
+.copernicusmarine/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# --- entornos y editores ---
+.venv/
+venv/
+.vscode/
+.idea/
+.spyproject/
+Thumbs.db
+desktop.ini
+.DS_Store
