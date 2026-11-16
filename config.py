@@ -69,6 +69,12 @@ CUBE_RAW: Final[Path] = DATA_RAW / "glorys12_thetao_norte_grande_1993-01_2026-08
 #: Indices de TSM Nino 1+2, 3, 3.4 y 4 (CPC/NOAA), en cache local.
 INDICES_CACHE: Final[Path] = DATA_RAW / "indices"
 
+#: Cubo de anomalias de las cuatro capas sobre ``PERIOD_FULL`` (script 02).
+CUBE_ANOM: Final[Path] = DATA_PROCESSED / "anom_thetao_norte_grande.nc"
+
+#: Tabla de eventos ICEN (script 03).
+EVENTS_CSV: Final[Path] = DATA_PROCESSED / "eventos_icen.csv"
+
 # --------------------------------------------------------------------------- #
 # Anomalias y ponderacion
 # --------------------------------------------------------------------------- #
