@@ -38,9 +38,12 @@ VARIABLES: Final[tuple[str, ...]] = ("thetao",)
 # Caja de estudio y profundidades
 # --------------------------------------------------------------------------- #
 
-#: Norte Grande de Chile: 18-27 S, desde la costa hasta 74 W (~200 km).
+#: Norte Grande de Chile: 18-27 S, desde la costa hasta 74 W (~200 km). Es la caja
+#: del poster. Norte Chico (27-32.5 S) queda declarada para la extension futura y
+#: para los tests del limite entre cajas; nunca se descomponen juntas.
 BOXES: Final[dict[str, dict[str, tuple[float, float]]]] = {
     "norte_grande": {"lat": (-27.0, -18.0), "lon": (-74.0, -69.0)},
+    "norte_chico": {"lat": (-32.5, -27.0), "lon": (-74.0, -69.0)},
 }
 BOX: Final[str] = "norte_grande"
 
