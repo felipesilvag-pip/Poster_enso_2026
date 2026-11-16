@@ -15,6 +15,7 @@ from enso_chile.eeof import (
     iterative_ossa,
     match_groups_by_subspace,
     eeof,
+    extend_ar,
     find_pairs,
     find_pairs_north,
     pair_lagged_corr,
@@ -401,3 +402,31 @@ def test_pureza_pondera_canales_por_varianza() -> None:
     assert p["cuasi-bienal"] == pytest.approx(0.1, abs=1e-6)
     with pytest.raises(ValueError):
         spectral_purity(np.zeros((T, 2)))
+
+
+def test_extend_ar_conserva_el_tramo_observado_y_la_forma() -> None:
+    rng = np.random.default_rng(42)
+    Z = rng.normal(size=(200, 3)) + np.array([1.0, -2.0, 0.5])
+    ext = extend_ar(Z, 30, p_max=6)
+    assert ext.shape == (260, 3)
+    np.testing.assert_allclose(ext[30:230], Z, atol=1e-12)
+
+
+def test_extend_ar_continua_una_oscilacion_en_ambos_sentidos() -> None:
+    n, M, per = 300, 24, 44.0
+    t = np.arange(-M, n + M)
+    x = 2.0 + np.sin(2 * np.pi * t / per)
+    ext = extend_ar(x[M:M + n, None], M, p_max=4)[:, 0]
+    np.testing.assert_allclose(ext, x, atol=1e-6)
+
+
+def test_extend_ar_ruido_blanco_decae_a_la_media() -> None:
+    rng = np.random.default_rng(0)
+    Z = 5.0 + rng.normal(size=(400, 1))
+    ext = extend_ar(Z, 60, p_max=3)
+    assert abs(ext[-1, 0] - Z.mean()) < 0.05 and abs(ext[0, 0] - Z.mean()) < 0.05
+
+
+def test_extend_ar_rechaza_series_cortas() -> None:
+    with pytest.raises(ValueError):
+        extend_ar(np.ones((20, 1)), 5, p_max=24)

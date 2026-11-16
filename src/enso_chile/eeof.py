@@ -679,3 +679,63 @@ def spectral_purity(component: np.ndarray, bands: dict | None = None) -> dict[st
     if s == 0:
         raise ValueError("El componente es identicamente nulo.")
     return {b: v / s for b, v in tot.items()}
+
+
+def _ar_aic_fit(x: np.ndarray, p_max: int) -> np.ndarray:
+    """Coeficientes AR(p) por minimos cuadrados, con p <= p_max elegido por AIC."""
+    mejor = None
+    for p in range(1, p_max + 1):
+        X = np.column_stack([x[p - j - 1:len(x) - j - 1] for j in range(p)])
+        y = x[p:]
+        a, *_ = np.linalg.lstsq(X, y, rcond=None)
+        s2 = float(((y - X @ a) ** 2).mean())
+        aic = len(y) * np.log(max(s2, 1e-300)) + 2 * p
+        if mejor is None or aic < mejor[0]:
+            mejor = (aic, a)
+    return mejor[1]
+
+
+def extend_ar(Z: np.ndarray, M: int, p_max: int = 24) -> np.ndarray:
+    """Extender cada canal ``M`` pasos hacia adelante y hacia atras con un AR(p).
+
+    Por canal se resta la media, se ajusta un AR(p) por minimos cuadrados con
+    ``p <= p_max`` elegido por AIC y se pronostica sin ruido ``M`` pasos; hacia el
+    pasado se hace lo mismo sobre la serie invertida (con su propio ajuste). Se usa
+    antes del EEOF para reducir el error de borde: el pronostico decae a la media
+    en 1-2 anios, asi que en la practica es un anio de continuacion mas relleno
+    climatologico. No se interpreta: se recorta despues de la descomposicion.
+
+    Parameters
+    ----------
+    Z : numpy.ndarray
+        Canales ``(T, C)``.
+    M : int
+        Pasos a agregar en cada extremo.
+    p_max : int, optional
+        Orden maximo del AR.
+
+    Returns
+    -------
+    numpy.ndarray
+        Serie extendida ``(T + 2M, C)``; las filas ``M:M+T`` son ``Z``.
+    """
+    Z = np.asarray(Z, dtype=float)
+    if Z.ndim != 2:
+        raise ValueError("Z debe ser 2-D (tiempo, canal).")
+    T, C = Z.shape
+    if T <= 2 * p_max:
+        raise ValueError("La serie es demasiado corta para p_max.")
+    out = np.empty((T + 2 * M, C))
+    for c in range(C):
+        media = Z[:, c].mean()
+        x = Z[:, c] - media
+        lados = []
+        for serie in (x, x[::-1]):
+            a = _ar_aic_fit(serie, p_max)
+            p = len(a)
+            ext = list(serie[-p:])
+            for _ in range(M):
+                ext.append(float(np.dot(a, ext[-1:-p - 1:-1])))
+            lados.append(np.array(ext[p:]))
+        out[:, c] = np.r_[lados[1][::-1], x, lados[0]] + media
+    return out
