@@ -173,6 +173,11 @@ thead th{font:600 11.5px/1.3 var(--f-body);letter-spacing:.04em;text-transform:u
 tr.nuevo td{font-weight:600;color:var(--new)}
 dl.idx{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:14px;margin:8px 0}
 dl.idx dt{font-family:var(--f-mono);color:var(--accent)} dl.idx dd{margin:0}
+details{background:var(--surface);border:1px solid var(--rule);border-radius:6px;margin:8px 0;padding:0 16px}
+details[open]{padding-bottom:10px}
+summary{font:600 15px/1.4 var(--f-body);cursor:pointer;padding:12px 0;color:var(--ink)}
+summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.eq{font-family:var(--f-mono);font-size:14px;background:var(--bg);border-radius:4px;padding:8px 12px;margin:8px 0;overflow-x:auto;white-space:nowrap}
 footer{margin-top:48px;border-top:1px solid var(--rule);padding-top:14px;font-size:13px;color:var(--muted)}
 @media (max-width:760px){.two{grid-template-columns:minmax(0,1fr)}.maps{grid-template-columns:repeat(2,minmax(0,1fr))}.map{height:280px}}
 </style>
@@ -253,6 +258,93 @@ etapa con etapa y se ve cómo crece 2026, cosa que una media de varios meses esc
 curso al cierre de los datos. Comparar 2026 con los primeros meses de los otros eventos (la misma etapa) es más
 justo que compararlo con eventos completos.</div>
 
+<h2>3 · Detalle de lo que no cabe en el póster</h2>
+<p>El póster resume; aquí va la explicación completa de cada bloque.</p>
+
+<details>
+<summary>Datos y anomalías</summary>
+<p>La anomalía de cada píxel es el residuo de un ajuste por mínimos cuadrados con constante, tendencia lineal y
+12 efectos mensuales, estimado con todo el período (1993-01 a 2026-03). Así se quitan a la vez el ciclo anual y la
+tendencia. Cada píxel se pondera por √cos(latitud) para que el área de cada celda pese lo que corresponde.</p>
+</details>
+
+<details>
+<summary>Teoría: EOF combinado</summary>
+<p>Cada capa se resume primero con sus 6 primeras PC, y cada bloque se normaliza a varianza total 1 para que las capas
+superficiales, que varían más, no dominen. Los cuatro bloques se concatenan en <b>Z</b> (T × 24), que se descompone
+por SVD:</p>
+<div class="eq">Z = U Σ Vᵀ = Σ<sub>j</sub> σ<sub>j</sub> u<sub>j</sub> v<sub>j</sub>ᵀ</div>
+<p>Es una suma de términos de rango 1 ordenados por varianza: v<sub>j</sub> es el patrón, u<sub>j</sub> su serie y
+σ<sub>j</sub>²/(T−1) la varianza que explica. Estandarizado, F = √(T−1) U son las PC y C = V Σ / √(T−1) las
+<b>cargas</b>: la covarianza entre cada canal y cada PC. El R² de un modo en una capa es la suma de sus cargas al
+cuadrado en ese bloque.</p>
+<p>Para rotar se usan <b>píxeles como filas</b>: C<sub>píx</sub> = diag(E<sub>1</sub>, …, E<sub>4</sub>) C, donde
+E<sub>ℓ</sub> son las 6 EOF de la capa ℓ. Así cada carga corresponde a un punto del mapa. Se rotan k = 4 modos, el
+número que separa North et al. (1982).</p>
+</details>
+
+<details>
+<summary>Teoría: varimax y bifactor</summary>
+<p><b>Varimax</b> busca la rotación ortogonal que maximiza la varianza de las cargas al cuadrado de cada componente:</p>
+<div class="eq">Σ<sub>j</sub> [ (1/p) Σ<sub>i</sub> c<sub>ij</sub>⁴ − ( (1/p) Σ<sub>i</sub> c<sub>ij</sub>² )² ]</div>
+<p>Cada componente queda con cargas grandes en pocas zonas y casi nulas en el resto.</p>
+<p><b>Bifactor</b> (Jennrich &amp; Bentler 2011): un factor <b>general</b> más <b>grupos</b>, con cada píxel en
+a lo más un grupo. Con C* = C<sub>píx</sub> T (cargas ya rotadas, T ortogonal), minimiza el bi-quartimin</p>
+<div class="eq">Q = Σ<sub>i</sub> Σ<sub>j≠l; j,l≥2</sub> c*<sub>ij</sub>² c*<sub>il</sub>²</div>
+<p>La columna 1, el general, también se rota, pero no entra en Q. Por eso puede quedarse con todo lo que es común a
+las capas, y los grupos con lo propio de cada una. Las dos rotaciones son ortogonales: los % se suman (76 % en los 4
+modos, igual que sin rotar).</p>
+</details>
+
+<details>
+<summary>Cómo leer las fichas</summary>
+<ul>
+  <li><b>Mapa</b>: cargas en la capa más fuerte, en °C por desviación estándar de la serie. Es cuánto se calienta
+  cada píxel cuando el componente sube 1 sd.</li>
+  <li><b>Serie</b>: la intensidad del componente cada mes, en sd, con el ICEN de fondo.</li>
+  <li><b>Barras</b>: R², el % de la varianza de cada capa que explica el componente.</li>
+  <li><b>r E y r C</b>: correlación mensual con los índices de Takahashi et al. (2011). E sigue al Pacífico oriental
+  (r = 0.95 con el ICEN); C, al central (r = 0.87 con Niño 3.4). Entre sí casi no se correlacionan (r = 0.07).</li>
+</ul>
+</details>
+
+<details>
+<summary>Resultados EOF en detalle</summary>
+<ul>
+  <li><b>EOF: mezclado.</b> El modo 1 se lleva todo lo que varía junto (50 % de la varianza combinada), sin separar
+  profundidades ni ritmos. El modo 2 casi no se relaciona con los índices: es difícil de interpretar.</li>
+  <li><b>Varimax: separa por profundidad.</b> Como el ENSO pesa arriba y lo lento abajo, también separa en parte los
+  ritmos. La superficie (51 % a 0.5 m) sigue al Pacífico oriental (E 0.53, C 0.14); el fondo (35 % a 156 m), no. Lo
+  común queda repartido en la "columna", ligada a ambos índices (E 0.38, C 0.40).</li>
+  <li><b>Bifactor: interpretable.</b> El general es el ENSO de cuenca en toda la columna (46 % del total; E 0.63,
+  C 0.51). Los grupos son una superficie costera sin firma central (C −0.10) y un fondo a 156 m sin relación con
+  ninguno de los dos índices.</li>
+  <li><b>Profundo frente a somero.</b> 1997-98 calienta toda la columna (general +2.5 sd); 2023-24 solo arriba, con
+  el fondo frío (−1.1 sd).</li>
+  <li><b>Niñas distintas.</b> 2007 fue fría en superficie (varimax superficie −2.3 sd); 2013 casi no deja firma.</li>
+  <li><b>2015-16.</b> General moderado (+1.0 sd), sin señal en superficie y concentrado a 92 m, en un componente que
+  el póster no muestra: elige "92 m" en el explorador de la sección 1.</li>
+</ul>
+</details>
+
+<details>
+<summary>EOF extendido (EEOF)</summary>
+<p>Cada fila de la matriz <b>X</b> pone una ventana de L = 72 meses de <b>Z</b> en una sola fila (rezagos 0 a L−1).
+Antes, cada canal se extiende 72 meses a cada lado con un AR(p) para reducir el error en los bordes. La SVD de X da
+patrones espacio-temporales de 72 meses, y una oscilación aparece como un <b>par</b> de modos. La
+<b>reconstrucción</b> (RC) promedia, para cada mes t, las M<sub>t</sub> ventanas que lo contienen:</p>
+<div class="eq">RC<sub>k</sub>(t) = (1/M<sub>t</sub>) Σ<sub>j</sub> u<sub>k</sub>(t−j+1) √λ<sub>k</sub> v<sub>k</sub>(j)</div>
+<p>El <b>varimax estructurado</b> (Groth &amp; Ghil 2011, 2015) rota los S = 10 primeros modos sumando la
+participación de cada canal sobre todos los rezagos, así que no rompe los pares. Cada modo rotado se asigna a una
+banda según dónde está su potencia: rápida (24-84 meses) o lenta (más de 84).</p>
+<ul>
+  <li><b>Sin rotar</b>, el componente lento arrastra oscilaciones del ENSO y las dos series se parecen.</li>
+  <li><b>Con varimax estructurado</b> se separan. La señal <b>rápida</b> (ENSO) oscila cada ~3-4 años, explica
+  21/21/10/11 % de cada capa y se parece al general del bifactor (E 0.64, C 0.51). La <b>lenta</b> es suave
+  (10/7/10/14 %; E 0.32, C 0.21).</li>
+</ul>
+</details>
+
 <footer>
   <p>Código: <a href="__REPO__" id="a-repo">repositorio en GitHub</a>. Datos: Copernicus Marine Service, GLORYS12
   (<code>cmems_mod_glo_phy_my_0.083deg_P1M-m</code>); índices Niño del CPC/NOAA (ICEN mostrado: <span id="m-icen"></span>).
@@ -266,13 +358,17 @@ const D = __DATOS__;
 const $ = id => document.getElementById(id);
 const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 const hasP = typeof Plotly !== "undefined";
-const CFG = {displayModeBar:false, responsive:true};
+const CFG = {displayModeBar:false, responsive:true, scrollZoom:false};
 const renders = [];
 function reg(f){ renders.push(f); try{ f(); }catch(e){ console.error(e); } }
+/* pantallas angostas (celular): graficos mas altos, menos marcas y lineas mas gruesas */
+const movil = () => window.matchMedia("(max-width:760px)").matches;
+/* sin arrastre ni zoom: en pantallas tactiles el dedo hace scroll en vez de mover el grafico */
 function lay(l){ return Object.assign({paper_bgcolor:"rgba(0,0,0,0)", plot_bgcolor:"rgba(0,0,0,0)",
-  font:{family:css("--f-body"), color:css("--ink"), size:12}, margin:{l:44,r:10,t:10,b:36}, showlegend:false}, l,
-  {xaxis:Object.assign({gridcolor:css("--grid"), zerolinecolor:css("--rule")}, l.xaxis||{}),
-   yaxis:Object.assign({gridcolor:css("--grid"), zerolinecolor:css("--rule")}, l.yaxis||{})}); }
+  font:{family:css("--f-body"), color:css("--ink"), size:12}, margin:{l:44,r:10,t:10,b:36}, showlegend:false,
+  dragmode:false}, l,
+  {xaxis:Object.assign({gridcolor:css("--grid"), zerolinecolor:css("--rule"), fixedrange:true}, l.xaxis||{}),
+   yaxis:Object.assign({gridcolor:css("--grid"), zerolinecolor:css("--rule"), fixedrange:true}, l.yaxis||{})}); }
 function plot(id, data, layout){ if(!hasP){ $(id).textContent = "No se pudo cargar Plotly desde el CDN."; return; } Plotly.react(id, data, lay(layout), CFG); }
 function seg(id, labels, ini, cb){
   const el = $(id); el.innerHTML = "";
@@ -317,11 +413,13 @@ function dibujaComp(){
       {margin:{l:z===0?40:20,r:z===3?44:6,t:26,b:30}, title:{text:D.etiq[z]+" · R² "+c.r2[z].toFixed(0)+" %", font:{size:12}, x:0.02, y:0.98},
        xaxis:{tickfont:{size:10}, dtick:2}, yaxis:{tickfont:{size:10}, scaleanchor:"x", scaleratio:1/Math.cos(22.5*Math.PI/180), showticklabels:z===0}});
   });
+  $("p-serie").style.height = $("p-r2").style.height = movil() ? "300px" : "270px";
   plot("p-serie", [
-    {x:D.t, y:D.icen, mode:"lines", line:{color:css("--muted"), width:1}, name:"ICEN (estandarizado)", hovertemplate:"%{x}: ICEN %{y:.2f}<extra></extra>"},
-    {x:D.t, y:c.serie, mode:"lines", line:{color:css("--accent"), width:1.6}, name:c.nombre, hovertemplate:"%{x}: %{y:.2f} sd<extra></extra>"}],
+    {x:D.t, y:D.icen, mode:"lines", line:{color:css("--muted"), width:1}, name:"ICEN", hovertemplate:"%{y:.2f}"},
+    {x:D.t, y:c.serie, mode:"lines", line:{color:css("--accent"), width:movil()?2:1.6}, name:c.nombre, hovertemplate:"%{y:.2f} sd"}],
     {showlegend:true, legend:{orientation:"h", y:1.12, x:0}, margin:{l:40,r:10,t:30,b:30}, shapes:sombras(),
-     yaxis:{title:{text:"sd", font:{size:11}}}, xaxis:{type:"date"}});
+     hovermode:"x unified", yaxis:{title:{text:"sd", font:{size:11}}},
+     xaxis:{type:"date", hoverformat:"%Y-%m", nticks:movil()?5:10}});
   plot("p-r2", [{type:"bar", orientation:"h", y:D.etiq, x:c.r2, marker:{color:css("--accent")}, text:c.r2.map(v=>v.toFixed(0)+" %"),
     textposition:"outside", cliponaxis:false, hovertemplate:"%{y}: %{x:.1f} %<extra></extra>"}],
     {margin:{l:50,r:30,t:30,b:36}, title:{text:"R² por capa", font:{size:12}, x:0.02}, xaxis:{range:[0, Math.max(60, ...c.r2)*1.15]}, yaxis:{autorange:"reversed"}});
@@ -352,31 +450,40 @@ function tablaEv(){
 let met3 = 1, cmp3 = 0;
 const NMAX = 24;
 function dibujaTray(){
-  const c = porMet(METS[met3])[cmp3], tr = [];
+  const c = porMet(METS[met3])[cmp3], tr = [], etiquetas = [], m = movil(), g = m ? 0.6 : 0;
   const grises = {"1997-98":"#7b3294", "2015-16":"#1b9e77", "2023-24":"#2166ac"};
+  $("p-tray").style.height = m ? "420px" : "340px";
   D.eventos.filter(e=>e.tipo==="nino").forEach(e=>{
     const i0 = D.t.indexOf(e.inicio), x = [], y = [];
     for (let k=0; k<NMAX && i0+k<D.t.length; k++){ x.push(k+1); y.push(c.serie[i0+k]); }
-    const dur = e.abierto ? null : e.duracion;
+    const dur = e.abierto ? null : e.duracion, color = e.abierto ? css("--new") : (grises[e.label]||css("--muted"));
+    const xf = x.slice(), yf = y.slice();                 // extremo de la curva completa, para la etiqueta
     if (e.abierto && D.t_anfc){                      // tramo anfc: punteado, desde el ultimo mes de GLORYS
       const kg = x.filter(k=>D.t[i0+k-1] <= D.t_glorys_fin).length;
-      tr.push({x:x.slice(kg-1), y:y.slice(kg-1), mode:"lines+markers", name:"2026, anfc corregido (exploratorio)",
-        line:{color:css("--new"), width:3, dash:"dot"}, marker:{size:6},
-        customdata:x.slice(kg-1).map(k=>D.t[i0+k-1]), hovertemplate:"%{customdata} (mes %{x}): %{y:.2f} sd<extra>anfc</extra>"});
+      tr.push({x:x.slice(kg-1), y:y.slice(kg-1), mode:"lines+markers", name:e.label+" anfc",
+        line:{color:color, width:3+g, dash:"dot"}, marker:{size:m?8:6}, hovertemplate:"%{y:.2f} sd"});
       x.length = kg; y.length = kg;
     }
-    tr.push({x, y, mode:"lines", name:"El Niño "+e.label+(e.abierto?" (en curso)":""),
-      line:{color:e.abierto?css("--new"):(grises[e.label]||css("--muted")), width:e.abierto?3.5:1.8},
-      customdata:x.map(k=>D.t[i0+k-1]),
-      hovertemplate:"%{customdata} (mes %{x}): %{y:.2f} sd<extra>"+e.label+"</extra>"});
-    if (dur && dur<=NMAX) tr.push({x:[dur], y:[c.serie[i0+dur-1]], mode:"markers", showlegend:false,
-      marker:{size:7, symbol:"x", color:grises[e.label]||css("--muted")}, hovertemplate:"fin según ICEN (mes "+dur+")<extra>"+e.label+"</extra>"});
+    tr.push({x, y, mode:"lines", name:e.label, line:{color:color, width:(e.abierto?3.5:1.8)+g}, hovertemplate:"%{y:.2f} sd"});
+    if (dur && dur<=NMAX) tr.push({x:[dur], y:[c.serie[i0+dur-1]], mode:"markers", showlegend:false, hoverinfo:"skip",
+      marker:{size:m?9:7, symbol:"x", color:color}});
+    etiquetas.push({x:xf[xf.length-1], y:yf[yf.length-1], text:"<b>"+e.label+"</b>", showarrow:false, xanchor:"left",
+      xshift:6, font:{color:color, size:m?12:11}});
   });
-  plot("p-tray", tr, {showlegend:true, legend:{orientation:"h", y:1.12, x:0}, margin:{l:44,r:10,t:30,b:40},
-    xaxis:{title:{text:"meses desde el inicio del evento (ICEN)", font:{size:11}}, dtick:3, range:[0.5, NMAX+0.5], zeroline:false},
+  /* etiquetas al final de cada curva en vez de leyenda; separar las que quedan muy juntas */
+  etiquetas.sort((a,b)=>a.y-b.y);
+  for (let i=1; i<etiquetas.length; i++){
+    const dy = etiquetas[i].y - etiquetas[i-1].y;
+    if (Math.abs(etiquetas[i].x - etiquetas[i-1].x) < 3 && dy < 0.45) etiquetas[i].y = etiquetas[i-1].y + 0.45;
+  }
+  plot("p-tray", tr, {margin:{l:44,r:m?62:66,t:12,b:40}, hovermode:false, annotations:etiquetas,
+    xaxis:{title:{text:"meses desde el inicio del evento (ICEN)", font:{size:11}}, dtick:m?6:3, range:[0.5, NMAX+0.5],
+           zeroline:false},
     yaxis:{title:{text:"puntaje (sd)", font:{size:11}}},
     shapes:[{type:"line", xref:"x", yref:"y", x0:0.5, x1:NMAX+0.5, y0:0, y1:0, line:{color:css("--rule"), width:1}}]});
-  $("c-tray").textContent = METS[met3]+" · "+c.nombre+". Las ✕ marcan el fin de cada evento según el ICEN. 2026 llega hasta "+D.t_fin+" (mes "+D.n_2026+"), el último mes de GLORYS12; el ICEN sigue hasta "+D.icen_ult+"."
+  $("c-tray").textContent = METS[met3]+" · "+c.nombre+". Las ✕ marcan el fin de cada evento según el ICEN. 2026 llega hasta "
+    + D.t_glorys_fin+" con GLORYS12" + (D.t_anfc ? " y, punteado, hasta "+D.t_fin+" con anfc (exploratorio)" : "")
+    + "; el ICEN sigue hasta "+D.icen_ult+"."
     +" Puntajes mensuales, sin suavizar.";
 }
 function botonesComp3(){ seg("s-comp3", porMet(METS[met3]).map(c=>c.nombre), cmp3, i=>{ cmp3 = i; dibujaTray(); }); }
@@ -387,6 +494,7 @@ seg("s-ven", ["Evento completo","Primeros "+D.n_2026+" meses"], 0, i=>{ ven = i;
 tablaEv();
 
 if (window.matchMedia) window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ()=>renders.forEach(f=>f()));
+if (window.matchMedia) window.matchMedia("(max-width:760px)").addEventListener("change", ()=>renders.forEach(f=>f()));
 </script>
 </body>
 </html>
